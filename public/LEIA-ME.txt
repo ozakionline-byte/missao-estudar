@@ -1,1 +1,14 @@
-MISSÃO ESTUDAR M.E. V2 — integração Gemini. Publique a pasta inteira em Cloudflare Pages com suporte a Pages Functions (functions/api/analyze.js). Configure GEMINI_API_KEY em Settings > Variables and Secrets, como segredo. Teste com fotos sem dados pessoais. Os dados ainda ficam somente no navegador; não use dados reais de crianças em produção até configurar autenticação e Supabase.
+MISSÃO ESTUDAR M.E. — LOGIN V2
+
+ALTERAÇÕES:
+- Ícone de olho dentro do campo senha para mostrar/ocultar.
+- Caixa Lembrar meus dados: armazena somente o e-mail neste dispositivo.
+- Senha: preenchimento automático pelo gerenciador de senhas do navegador, se o usuário autorizar. A senha NÃO é salva em texto aberto pelo aplicativo.
+
+PUBLICAÇÃO:
+1. Abra a pasta public do ZIP e envie seus arquivos para a pasta public do repositório GitHub missao-estudar, substituindo os de mesmo nome.
+2. A pasta functions/api/analyze.js fica na raiz do repositório, não dentro de public. Não precisa reenviá-la se não foi alterada.
+3. Faça Commit changes e aguarde Cloudflare Pages publicar.
+4. Teste o login no navegador.
+
+Observação: a sessão do Supabase já pode permanecer conectada entre visitas, conforme as configurações de autenticação.
