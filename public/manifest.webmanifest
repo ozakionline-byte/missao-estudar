@@ -1,1 +1,22 @@
-{"name":"ESTUDANDO - Missões do Conhecimento","short_name":"ESTUDANDO","start_url":"/","display":"standalone","background_color":"#edf5ff","theme_color":"#1769d3","icons":[{"src":"/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"/icon-512.png","sizes":"512x512","type":"image/png"}]}
+{
+  "name": "Missão Estudar M.E.",
+  "short_name": "Missão Estudar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#edf5ff",
+  "theme_color": "#1769d3",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
