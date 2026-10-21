@@ -106,7 +106,7 @@ async function openUserME(user){
 async function persistME(){
   if(!activeUser||!sb)return; if(saveBusy){pendingSave=true;return}
   saveBusy=true;const userId=activeUser.id,generation=sessionGeneration,snapshot=JSON.parse(JSON.stringify(state));
-  try{const {error}=await sb.from('missao_estudar_dados').upsert({responsavel_id:userId,dados:snapshot,atualizado_em:new Date().toISOString()},{onConflict:'responsavel_id'});if(error)throw error;syncReportsME(userId,snapshot).catch(e=>console.warn('Relatório não enviado ao administrador:',e.message||e))}
+  try{const {error}=await sb.from('missao_estudar_dados').upsert({responsavel_id:userId,dados:snapshot,atualizado_em:new Date().toISOString()},{onConflict:'responsavel_id'});if(error)throw error;await syncReportsME(userId,snapshot)}
   catch(err){if(generation===sessionGeneration)alert('Não foi possível sincronizar seus dados. Verifique sua conexão. Detalhes: '+err.message)}
   finally{saveBusy=false;if(pendingSave&&generation===sessionGeneration){pendingSave=false;persistME()}}
 }
@@ -144,22 +144,21 @@ function relatorio(){
   const days=names.map((n,i)=>{const dt=addDaysYMD(ws,i);return{dt,n,s:dayStatsME(state.days[dt])}});
   const tot=days.reduce((t,x)=>({stars:t.stars+x.s.stars,points:t.points+x.s.points,questions:t.questions+x.s.questions,hits:t.hits+x.s.hits,done:t.done+(x.s.homework===true?1:0),active:t.active+(x.s.has?1:0)}),{stars:0,points:0,questions:0,hits:0,done:0,active:0});
   const fq=d.feelingQuestions||[];
-  $('main').innerHTML=`<section class="card"><h2>🏆 Relatório diário</h2><p><b>Aluno:</b> ${esc(state.profile.aluno||'Não cadastrado')} ${esc(state.profile.avatar||'')}</p><p><b>Data:</b> ${today()}</p><div class="grid"><div class="card"><div class="score">⭐ ${st.stars}</div>Estrelas (até 12)</div><div class="card"><div class="score">${st.points}</div>Pontos de compromisso</div><div class="card"><div class="score">${st.questions}</div>Perguntas respondidas</div></div><h3>Desempenho nas missões</h3><p><b>Acertos:</b> ${st.hits} de ${st.questions}</p>${(d.activities||[]).map(a=>`<p>${esc(a.subject)}: ${a.hits}/${a.total} acertos</p>`).join('')}<h3>O DIA DO ALUNO</h3>${(d.feelings||[]).map((v,i)=>`<p>${i+1}. ${fq[i]?esc(fq[i])+' ':''}<b>${esc(v||'Sem resposta')}</b></p>`).join('')||'<p>Sem respostas registradas.</p>'}<p><b>Dever:</b> ${d.homework===undefined?'Não informado':d.homework?'Feito':'Não feito'}</p><p class="success">Cada dia de estudo é uma conquista!</p>
+  $('main').innerHTML=`<section class="card"><h2>🏆 Dia do Aluno</h2><p><b>Aluno:</b> ${esc(state.profile.aluno||'Não cadastrado')} ${esc(state.profile.avatar||'')}</p><p><b>Data:</b> ${today()}</p><div class="grid"><div class="card"><div class="score">⭐ ${st.stars}</div>Estrelas (até 12)</div><div class="card"><div class="score">${st.points}</div>Pontos de compromisso</div><div class="card"><div class="score">${st.questions}</div>Perguntas respondidas</div></div><h3>Desempenho nas missões</h3><p><b>Acertos:</b> ${st.hits} de ${st.questions}</p>${(d.activities||[]).map(a=>`<p>${esc(a.subject)}: ${a.hits}/${a.total} acertos</p>`).join('')}<h3>O DIA DO ALUNO</h3>${(d.feelings||[]).map((v,i)=>`<p>${i+1}. ${fq[i]?esc(fq[i])+' ':''}<b>${esc(v||'Sem resposta')}</b></p>`).join('')||'<p>Sem respostas registradas.</p>'}<p><b>Dever:</b> ${d.homework===undefined?'Não informado':d.homework?'Feito':'Não feito'}</p><p class="success">Cada dia de estudo é uma conquista!</p>
   <div class="week-report"><h2>📅 Resumo da semana</h2><p><b>${brDate(ws)} a ${brDate(we)}</b>${relWeekOffset===0?' (semana atual)':''}</p><div class="grid"><div class="card"><div class="score">⭐ ${tot.stars}</div>Estrelas na semana</div><div class="card"><div class="score">${tot.points}</div>Pontos de compromisso</div><div class="card"><div class="score">${tot.hits}/${tot.questions}</div>Acertos nas missões</div><div class="card"><div class="score">${tot.done}</div>Deveres feitos · ${tot.active} dia(s) com registro</div></div>
   <div class="week-scroll"><table class="week-table"><thead><tr><th>Dia</th><th>⭐</th><th>Pontos</th><th>Acertos</th><th>Dever</th></tr></thead><tbody>${days.map(x=>`<tr class="${x.s.has?'':'empty'}"><td>${x.n} ${brShort(x.dt)}</td><td>${x.s.stars}</td><td>${x.s.points}</td><td>${x.s.questions?x.s.hits+'/'+x.s.questions:'—'}</td><td>${x.s.homework===undefined?'—':x.s.homework?'✅':'❌'}</td></tr>`).join('')}</tbody></table></div>
   <button type="button" class="secondary" onclick="relWeek(-1)">◀ Semana anterior</button><button type="button" class="secondary" onclick="relWeek(1)" ${relWeekOffset===0?'disabled':''}>Próxima semana ▶</button>${relWeekOffset!==0?'<button type="button" class="secondary" onclick="relWeek(0)">Semana atual</button>':''}</div>
   <button onclick="window.print()">Imprimir / Salvar PDF</button><button class="secondary" onclick="go('dia')">Voltar às missões</button><p class="muted">Os relatórios diários são acumulados por semana e ficam salvos na conta do responsável. Eles também são enviados à administração do Missão Estudar para acompanhamento pedagógico.</p></section>`}
-// Envia ao banco do administrador (tabela me_relatorios) um registro por dia.
-let reportsBackfilled=false;
+// Sincroniza os registros diários no Supabase, agrupados por semana no painel administrativo.
 async function syncReportsME(userId,snap){
   const p=snap.profile||{},days=snap.days||{},t=today();
-  let dates=reportsBackfilled?[t]:Object.keys(days).sort().slice(-60);
+  let dates=Object.keys(days).sort().slice(-90);
   const rows=[];
   for(const date of dates){const d=days[date];if(!d)continue;const s=dayStatsME(d);if(!s.has)continue;
     rows.push({responsavel_id:userId,aluno:p.aluno||null,responsavel:p.responsavel||null,data:date,semana_inicio:weekStartYMD(date),estrelas:s.stars,pontos:s.points,perguntas:s.questions,acertos:s.hits,dever:d.homework===undefined?null:d.homework,dia_aluno:(d.feelings||[]).map((v,i)=>({pergunta:(d.feelingQuestions||[])[i]||'Pergunta '+(i+1),resposta:v||''})),atividades:d.activities||[],atualizado_em:new Date().toISOString()})}
-  if(!rows.length){reportsBackfilled=true;return}
+  if(!rows.length)return
   const {error}=await sb.from('me_relatorios').upsert(rows,{onConflict:'responsavel_id,data'});
-  if(error)throw error;reportsBackfilled=true;
+  if(error)throw error;
 }
 
 // Painel administrativo: permissões verificadas no Supabase, nunca somente no navegador.
@@ -183,7 +182,7 @@ async function showAdminME(tab){
   document.body.classList.remove('me-login');document.body.classList.add('me-app');
   if(!isAdminME)return authScreenME('Acesso não autorizado.');
   $('accountBar').style.display='block';$('accountEmail').textContent='Administrador';
-  $('nav').innerHTML=[['alunos','👥 Alunos'],['relatorios','📊 Relatórios'],['perguntas','📝 Perguntas'],['senha','🔑 Alterar senha']].map(([id,label])=>`<button class="${id===tab?'':'secondary'}" onclick="showAdminME('${id}')">${label}</button>`).join('');
+  $('nav').innerHTML=[['alunos','👥 Alunos'],['relatorios','📊 Relatórios semanais'],['perguntas','📝 Perguntas'],['senha','🔑 Alterar senha']].map(([id,label])=>`<button class="${id===tab?'':'secondary'}" onclick="showAdminME('${id}')">${label}</button>`).join('');
   $('main').innerHTML='<section class="card">Carregando painel...</section>';
   if(tab==='alunos')return adminStudentsME();if(tab==='relatorios')return adminReportsME();if(tab==='perguntas')return adminQuestionsME();return adminPasswordME();
 }
