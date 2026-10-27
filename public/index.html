@@ -201,6 +201,15 @@ const brShort=s=>brDate(s).slice(0,5);
 function dayStatsME(d){d=d||{};const acts=d.activities||[],answered=(d.feelings||[]).filter(Boolean).length;return{stars:answered*3,points:d.homework===true?10:0,questions:acts.reduce((n,a)=>n+a.total,0),hits:acts.reduce((n,a)=>n+a.hits,0),homework:d.homework,has:answered>0||d.homework!==undefined||acts.length>0}}
 let relWeekOffset=0;
 function relWeek(n){relWeekOffset=n===0?0:Math.min(0,relWeekOffset+n);relatorio()}
+
+function enviarRelatorioWhatsApp(){
+  const p=state.profile||{};
+  const telefone=String(p.celular||'').replace(/\D/g,'');
+  if(!telefone){alert('Cadastre o WhatsApp do responsável em Cadastro da Família.');return;}
+  const numero=telefone.startsWith('55')?telefone:'55'+telefone;
+  const mensagem=`Olá ${p.responsavel||'responsável'}\n\n${p.aluno||'O aluno'} acabou de finalizar o dever no app Missão Educar!`;
+  window.open('https://wa.me/'+numero+'?text='+encodeURIComponent(mensagem),'_blank','noopener');
+}
 function relatorio(){
   const d=day(),st=dayStatsME(d),names=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   const ws=addDaysYMD(weekStartYMD(today()),relWeekOffset*7),we=addDaysYMD(ws,6);
@@ -211,7 +220,7 @@ function relatorio(){
   <div class="week-report"><h2>📅 Resumo da semana</h2><p><b>${brDate(ws)} a ${brDate(we)}</b>${relWeekOffset===0?' (semana atual)':''}</p><div class="grid"><div class="card"><div class="score">⭐ ${tot.stars}</div>Estrelas na semana</div><div class="card"><div class="score">${tot.points}</div>Pontos de compromisso</div><div class="card"><div class="score">${tot.hits}/${tot.questions}</div>Acertos nas missões</div><div class="card"><div class="score">${tot.done}</div>Deveres feitos · ${tot.active} dia(s) com registro</div></div>
   <div class="week-scroll"><table class="week-table"><thead><tr><th>Dia</th><th>⭐</th><th>Pontos</th><th>Acertos</th><th>Dever</th></tr></thead><tbody>${days.map(x=>`<tr class="${x.s.has?'':'empty'}"><td>${x.n} ${brShort(x.dt)}</td><td>${x.s.stars}</td><td>${x.s.points}</td><td>${x.s.questions?x.s.hits+'/'+x.s.questions:'—'}</td><td>${x.s.homework===undefined?'—':x.s.homework?'✅':'❌'}</td></tr>`).join('')}</tbody></table></div>
   <button type="button" class="secondary" onclick="relWeek(-1)">◀ Semana anterior</button><button type="button" class="secondary" onclick="relWeek(1)" ${relWeekOffset===0?'disabled':''}>Próxima semana ▶</button>${relWeekOffset!==0?'<button type="button" class="secondary" onclick="relWeek(0)">Semana atual</button>':''}</div>
-  <button onclick="window.print()">Imprimir / Salvar PDF</button><button class="secondary" onclick="go('dia')">Voltar às missões</button><p class="muted">Os relatórios diários são acumulados por semana e ficam salvos na conta do responsável. Eles também são enviados à administração do Missão Estudar para acompanhamento pedagógico.</p></section>`}
+  <button onclick="window.print()">Imprimir / Salvar PDF</button><button type="button" onclick="enviarRelatorioWhatsApp()">ENVIAR</button><button class="secondary" onclick="go('dia')">Voltar às missões</button><p class="muted">Os relatórios diários são acumulados por semana e ficam salvos na conta do responsável. Eles também são enviados à administração do Missão Estudar para acompanhamento pedagógico.</p></section>`}
 // Sincroniza os registros diários no Supabase, agrupados por semana no painel administrativo.
 async function syncReportsME(userId,snap){
   const p=snap.profile||{},days=snap.days||{},t=today();
